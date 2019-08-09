@@ -1,12 +1,13 @@
 import "phaser";
+import { GameObjects } from "phaser";
 export class GameScene extends Phaser.Scene {
     delta: number;
     lastStarTime: number;
     starsCaught: number;
     starsFallen: number;
-    door1: Phaser.Physics.Arcade.StaticGroup;
-    door2: Phaser.Physics.Arcade.StaticGroup;
-    door3: Phaser.Physics.Arcade.StaticGroup;
+    ghostId: number;
+    score: number
+
     door4: Phaser.Physics.Arcade.StaticGroup;
     sand: Phaser.Physics.Arcade.StaticGroup;
     info: Phaser.GameObjects.Text;
@@ -21,6 +22,7 @@ export class GameScene extends Phaser.Scene {
         this.lastStarTime = 0;
         this.starsCaught = 0;
         this.starsFallen = 0;
+        this.score = 0;
     }
     preload(): void {
         this.load.image("star", "https://raw.githubusercontent.com/mariyadavydova/starfall-phaser3-typescript/master/assets/star.png");
@@ -32,34 +34,13 @@ export class GameScene extends Phaser.Scene {
     }
 
     create(): void {
-        // this.sand = this.physics.add.staticGroup({
-        //     key: 'sand',
-        //     frameQuantity: 20
-        // });
-        this.door1 = this.physics.add.staticGroup({
-            key: 'door01',
-            frameQuantity: 20,
-            setXY: {
-                x: 200,
-                y: 400,
-            }
-        });
-        this.door2 = this.physics.add.staticGroup({
-            key: 'door02',
-            frameQuantity: 20,
-            setXY: {
-                x: 400,
-                y: 400,
-            }
-        });
-        this.door3 = this.physics.add.staticGroup({
-            key: 'door04',
-            frameQuantity: 20,
-            setXY: {
-                x: 600,
-                y: 400,
-            }
-        });
+        this.ghostId = Phaser.Math.RND.between(1, 3);
+        this.createDoor(this.ghostId, 200, 400);
+
+        this.input.on('gameobjectup', this.clickHandler, this);
+
+        console.log(this.ghostId)
+
         // Phaser.Actions.PlaceOnLine(this.sand.getChildren(),
         //     new Phaser.Geom.Line(20, 580, 820, 580));
         // this.sand.refresh();
@@ -67,28 +48,17 @@ export class GameScene extends Phaser.Scene {
             { font: '24px Arial Bold', fill: '#FBFBAC' });
     }
     update(time: number): void {
-        var diff: number = time - this.lastStarTime;
-        if (diff > this.delta) {
-            this.lastStarTime = time;
-            if (this.delta > 500) {
-                this.delta -= 20;
-            }
-            // this.emitStar();
-        }
-        this.info.text =
-            this.starsCaught + " caught - " +
-            this.starsFallen + " fallen (max 3)";
+        // var diff: number = time - this.lastStarTime;
+        // if (diff > this.delta) {
+        //     this.lastStarTime = time;
+        //     if (this.delta > 500) {
+        //         this.delta -= 20;
+        //     }
+        //     // this.emitStar();
+        // }
+        this.info.text = this.score + '';
     }
-    private onClick(star: Phaser.Physics.Arcade.Image): () => void {
-        return function () {
-            star.setTint(0x00ff00);
-            star.setVelocity(0, 0);
-            this.starsCaught += 1;
-            this.time.delayedCall(100, function (star) {
-                star.destroy();
-            }, [star], this);
-        }
-    }
+
     private onFall(star: Phaser.Physics.Arcade.Image): () => void {
         return function () {
             star.setTint(0xff0000);
@@ -98,16 +68,33 @@ export class GameScene extends Phaser.Scene {
             }, [star], this);
         }
     }
-    private emitStar(): void {
-        var star: Phaser.Physics.Arcade.Image;
-        var x = Phaser.Math.Between(25, 775);
-        var y = 26;
-        star = this.physics.add.image(x, y, "star");
-        star.setDisplaySize(50, 50);
-        star.setVelocity(0, 100);
-        star.setInteractive();
-        star.on('pointerdown', this.onClick(star), this);
-        this.physics.add.collider(star, this.sand,
-            this.onFall(star), null, this);
+
+    private createDoor(key: number, x: number, y: number): void {
+
+        // this.info.text = String(ghostId);
+        let xc = x, open;
+        for (let i = 1; i <= 3; i++) {
+            if (i === key) {
+                open = this.add.image(xc, y, 'door04');
+            } else {
+                open = this.add.image(xc, y, 'door02');
+            }
+            let close = this.add.image(xc, y, 'door01');
+            close.setData('key', i)
+            open.setData('open', true)
+
+            open.setInteractive();
+            close.setInteractive();
+            xc += 200;
+        }
+    }
+
+    private clickHandler(pointer, door): void {
+        const isOpen = door.getData('open');
+        const key = door.getData('key');
+        console.log("TCL: GameScene -> key", key)
+        door.input.enabled = false;
+        if (!isOpen) door.setVisible(false);
+        if (key !== this.ghostId) this.score++;
     }
 };
